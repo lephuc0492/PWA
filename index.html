@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PWA Demo - Cài Đặt Tùy Chỉnh</title>
+    <title>PWA Cài Đặt Trực Tiếp (Tối Ưu)</title>
     <!-- Tải Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -24,170 +24,137 @@
     
     <!-- KHAI BÁO MANIFEST VÀ SERVICE WORKER -->
     <script>
-        // Khai báo biến để lưu sự kiện cài đặt (Deferred Prompt)
         let deferredPrompt;
         
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. TẠO VÀ NHÚNG MANIFEST (Cần thiết cho tính năng A2HS)
+            const installButton = document.getElementById('installButton');
+            const installMessage = document.getElementById('installMessage');
+
+            // --- 1. CẤU HÌNH VÀ NHÚNG MANIFEST ---
             const manifestData = {
-                "name": "PWA Cài Đặt Tùy Chỉnh",
-                "short_name": "MyPWA",
+                "name": "PWA Cài Đặt Nhanh",
+                "short_name": "QuickApp",
                 "start_url": "./index.html",
                 "display": "standalone",
-                "background_color": "#eff6ff",
+                "background_color": "#f0fdf4",
                 "theme_color": "#10b981",
                 "icons": [
-                    {
-                        "src": "https://placehold.co/192x192/10b981/ffffff?text=PWA",
-                        "sizes": "192x192",
-                        "type": "image/png"
-                    },
-                    {
-                        "src": "https://placehold.co/512x512/10b981/ffffff?text=PWA",
-                        "sizes": "512x512",
-                        "type": "image/png"
-                    }
+                    { "src": "https://placehold.co/192x192/10b981/ffffff?text=App", "sizes": "192x192", "type": "image/png" },
+                    { "src": "https://placehold.co/512x512/10b981/ffffff?text=App", "sizes": "512x512", "type": "image/png" }
                 ]
             };
-
             const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
             const manifestURL = URL.createObjectURL(manifestBlob);
-            
             const link = document.createElement('link');
             link.rel = 'manifest';
             link.href = manifestURL;
             document.head.appendChild(link);
             
-            
-            // 2. ĐĂNG KÝ SERVICE WORKER (Cần thiết cho tính năng A2HS)
+            // --- 2. ĐĂNG KÝ SERVICE WORKER ---
             if ('serviceWorker' in navigator) {
                 const swCode = `
-                    const CACHE_NAME = 'pwa-custom-install-v1';
+                    const CACHE_NAME = 'pwa-quick-install-v2';
                     const urlsToCache = ['./index.html', './'];
-
                     self.addEventListener('install', (event) => {
-                        event.waitUntil(
-                            caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
-                        );
+                        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)));
                         self.skipWaiting();
                     });
-
                     self.addEventListener('activate', (event) => {
-                        const cacheWhitelist = [CACHE_NAME];
-                        event.waitUntil(
-                            caches.keys().then((cacheNames) => {
-                                return Promise.all(
-                                    cacheNames.map((cacheName) => {
-                                        if (cacheWhitelist.indexOf(cacheName) === -1) {
-                                            return caches.delete(cacheName);
-                                        }
-                                    })
-                                );
-                            })
-                        );
-                        return self.clients.claim();
+                        event.waitUntil(self.clients.claim());
                     });
-
                     self.addEventListener('fetch', (event) => {
-                        event.respondWith(
-                            caches.match(event.request).then((response) => response || fetch(event.request))
-                        );
+                        event.respondWith(caches.match(event.request).then((response) => response || fetch(event.request)));
                     });
                 `;
-
                 const swBlob = new Blob([swCode], { type: 'application/javascript' });
                 const swURL = URL.createObjectURL(swBlob);
-
-                navigator.serviceWorker.register(swURL, { scope: './' })
-                    .then(registration => console.log('Service Worker đã đăng ký thành công.'))
-                    .catch(error => console.error('Lỗi đăng ký Service Worker:', error));
+                navigator.serviceWorker.register(swURL, { scope: './' });
             }
-            
-            // 3. LOGIC XỬ LÝ NÚT CÀI ĐẶT
-            const installButton = document.getElementById('installButton');
-            const installMessage = document.getElementById('installMessage');
 
-            // Bắt sự kiện trước khi trình duyệt hiển thị pop-up cài đặt
+            // --- 3. XỬ LÝ SỰ KIỆN CÀI ĐẶT TÙY CHỈNH ---
+
+            // A. Lắng nghe sự kiện trước khi trình duyệt hiển thị pop-up
             window.addEventListener('beforeinstallprompt', (e) => {
-                // Ngăn trình duyệt tự động hiển thị thanh thông báo nhỏ
+                // Ngăn trình duyệt tự động hiển thị pop-up
                 e.preventDefault();
-                // Lưu sự kiện lại
+                // Lưu sự kiện
                 deferredPrompt = e;
-                // Hiển thị nút cài đặt tùy chỉnh
-                installButton.classList.remove('hidden');
-                installMessage.textContent = 'Nhấn nút bên dưới để cài đặt ứng dụng vào màn hình chính.';
+                
+                // Hiển thị nút cài đặt và thông báo
+                installButton.classList.remove('opacity-0', 'pointer-events-none');
+                installButton.classList.add('opacity-100');
+                installMessage.innerHTML = '<span class="text-primary-green">&#9989; Sẵn sàng!</span> Nhấn nút XANH để cài đặt ngay lập tức.';
             });
 
-            // Xử lý khi người dùng nhấn nút cài đặt
+            // B. Xử lý khi người dùng click nút Tùy chỉnh
             installButton.addEventListener('click', async () => {
                 if (deferredPrompt) {
-                    // Ẩn nút ngay lập tức
-                    installButton.classList.add('hidden');
-                    installMessage.textContent = 'Đang chờ phản hồi từ hộp thoại cài đặt...';
+                    // Ẩn nút và hiển thị thông báo chờ
+                    installButton.classList.add('opacity-0', 'pointer-events-none');
+                    installMessage.textContent = 'Đang gọi hộp thoại cài đặt hệ thống...';
 
-                    // Kích hoạt hộp thoại cài đặt gốc của trình duyệt
+                    // Kích hoạt hộp thoại cài đặt gốc
                     deferredPrompt.prompt();
 
-                    // Chờ người dùng chấp nhận hoặc từ chối
+                    // Chờ phản hồi của người dùng
                     const { outcome } = await deferredPrompt.userChoice;
 
-                    // Xóa sự kiện đã lưu (chỉ dùng được 1 lần)
-                    deferredPrompt = null;
+                    // Xóa sự kiện đã lưu
+                    deferredPrompt = null; 
 
                     if (outcome === 'accepted') {
-                        installMessage.textContent = 'Cài đặt thành công! Ứng dụng sẽ mở ở chế độ độc lập.';
+                        installMessage.textContent = 'Cài đặt thành công! Ứng dụng đã được thêm vào Màn hình chính.';
                     } else {
-                        installMessage.textContent = 'Người dùng đã hủy cài đặt. Nút sẽ xuất hiện lại khi bạn truy cập lần sau.';
+                        installMessage.textContent = 'Bạn đã hủy cài đặt. Vui lòng tải lại trang nếu muốn thử lại.';
                     }
                 }
             });
             
-            // Xử lý khi ứng dụng đã được cài đặt (ví dụ: khi chạy từ màn hình chính)
-            window.addEventListener('appinstalled', () => {
-                installButton.classList.add('hidden');
-                installMessage.textContent = 'Ứng dụng đã được cài đặt và đang chạy ở chế độ Standalone.';
-            });
-            
-            // Kiểm tra trạng thái hiển thị mặc định
+            // C. Kiểm tra nếu đã cài đặt rồi
             if (window.matchMedia('(display-mode: standalone)').matches) {
-                // Nếu đang chạy ở chế độ Standalone (tức là đã cài đặt)
                 installButton.classList.add('hidden');
                 installMessage.textContent = 'Ứng dụng đang chạy ở chế độ độc lập (Standalone Mode).';
             }
         });
     </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-sm bg-white shadow-2xl rounded-2xl p-6 space-y-6 text-center">
+    <div class="w-full max-w-sm bg-white shadow-2xl rounded-2xl p-8 space-y-6 text-center border border-gray-100">
         <header class="space-y-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-primary-green mx-auto p-2 border-4 border-primary-green rounded-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-primary-green mx-auto p-2 bg-green-50 rounded-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <h1 class="text-2xl font-bold text-gray-900">
-                PWA Cài Đặt Trực Tiếp
+                Cài Đặt Ứng Dụng PWA
             </h1>
             <p class="text-sm text-gray-500">
-                Ứng dụng này sẵn sàng để được cài đặt như một app gốc.
+                Sử dụng nút tùy chỉnh để bắt đầu quá trình cài đặt.
             </p>
         </header>
 
         <section class="space-y-4">
-            <!-- Nút này ban đầu ẩn, chỉ hiển thị khi có sự kiện beforeinstallprompt -->
-            <button id="installButton" class="hidden w-full px-4 py-3 bg-primary-green text-white font-semibold rounded-xl shadow-lg hover:bg-dark-green transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+            <!-- Nút này ban đầu ẩn (opacity-0), chỉ hiện khi beforeinstallprompt xảy ra -->
+            <button 
+                id="installButton" 
+                class="w-full px-4 py-3 bg-primary-green text-white font-bold rounded-xl shadow-lg shadow-green-200 
+                       hover:bg-dark-green transition duration-200 transform hover:scale-[1.02] active:scale-[0.98] 
+                       opacity-0 pointer-events-none"
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
                 </svg>
-                Cài đặt Ứng dụng PWA
+                CÀI ĐẶT NGAY BÂY GIỜ
             </button>
             
-            <p id="installMessage" class="text-sm p-3 rounded-lg bg-blue-50 text-blue-700 font-medium">
-                Đang kiểm tra tính năng PWA... (Truy cập vài lần trên Mobile để kích hoạt)
+            <!-- Thông báo trạng thái -->
+            <p id="installMessage" class="text-sm p-3 rounded-xl bg-yellow-50 text-yellow-700 font-medium border border-yellow-200">
+                Đang chờ trình duyệt (Chrome/Android) kích hoạt sự kiện cài đặt... Vui lòng tải lại hoặc lướt trang.
             </p>
         </section>
 
         <footer class="text-xs text-gray-400 pt-4 border-t border-gray-100">
-            PWA yêu cầu Manifest và Service Worker để kích hoạt tính năng cài đặt.
+            PWA yêu cầu người dùng tương tác để kích hoạt tính năng cài đặt tự động.
         </footer>
     </div>
 
